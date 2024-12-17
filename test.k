@@ -215,7 +215,7 @@ module TEST
     rule <k> isPathClear I1:Int I2:Int I3:Int I4:Int => if(I1==I3 && I2==I4){returnTrue} else{if(a[(I1-1)*8+I2] ==K Empty){if(I2==I4){isPathClear I1+((I3-I1)/abs(I1-I3)) I2 I3 I4 }else{if(I1==I3){isPathClear I1 I2+((I4-I2)/abs(I2-I4)) I3 I4}else{isPathClear I1+((I3-I1)/abs(I1-I3)) I2+((I4-I2)/abs(I2-I4)) I3 I4}}}else{returnFalse}}
 
     //Handle the result
-    rule <k> handleResult I1:Int I2:Int I3:Int I4:Int => updateCell a[(I1-1)*8+I2] a[(I3-1)*8+I4] ~> pawnCheck a[(I1-1)*8+I2] I1 I2 I3 I4
+    rule <k> handleResult I1:Int I2:Int I3:Int I4:Int => updateCell (I1-1)*8+I2 (I3-1)*8+I4 ~> pawnCheck a[(I1-1)*8+I2] I1 I2 I3 I4
     rule <k> updateCell L1:Exp L2:Exp => . </k>
          <board> ...L1 |-> (Pi:Piece => Empty) ... L2 |-> (_ => Pi)...</board>
     rule <k> pawnCheck L:Exp I1:Int I2:Int I3:Int I4:Int => if(PT ==K P){if((C ==K Black && I3 == 8) || (C ==K White && I3==1)){askPromote I3 I4}}
