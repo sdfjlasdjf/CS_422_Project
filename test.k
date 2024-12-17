@@ -1,10 +1,10 @@
-module TEST1-SYNTAX
+module TEST-SYNTAX
     imports DOMAINS-SYNTAX
 
 endmodule
 
-module TEST1
-    imports TEST1-SYNTAX
+module TEST
+    imports TEST-SYNTAX
     imports DOMAINS
     syntax PieceType ::= "P" | "N" | "B" | "R" | "Q" | "K"
     syntax Color ::= "White" 
