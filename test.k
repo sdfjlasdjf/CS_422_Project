@@ -1,9 +1,9 @@
-module TEST-SYNTAX
+module TEST1-SYNTAX
     imports DOMAINS-SYNTAX
 
 endmodule
 
-module TEST
+module TEST1
     imports TEST1-SYNTAX
     imports DOMAINS
     syntax PieceType ::= "P" | "N" | "B" | "R" | "Q" | "K"
@@ -12,7 +12,7 @@ module TEST
                     | "getColor" "(" Exp ")"                                            [strict]
 
     syntax Piece ::= Color PieceType | "Empty"
-    syntax Function ::= Bool
+    syntax Function ::= Bool | Command
 				| "returnTrue"
 				| "returnFalse"
                 | "getPieceType" "(" Piece ")"                                  [strict]
@@ -25,12 +25,14 @@ module TEST
                 | "updateCell" Exp Exp                                          [strict]
                 | "pawnCheck" Exp Int Int Int Int                               [strict]
                 | "changeColor" Color                                           [strict]
-                | "SHOW"                                                      
+                | "SHOW"                      
+                | "read"                                                        [strict]                          
                 | "SHOWAUX" Int                                                 [strict]
 				| "PRINT" Exp		                                            [strict]
                 | "Init" 
                 | "SHOW" 
-                | "MOVE" Int Int Int Int 									    [strict]
+                | "Promote" PieceType Exp                                       [strict]
+    syntax Command ::= | "MOVE" Int Int Int Int 							    [strict]
 
     syntax Exp ::= Int | Bool | String | Id | Piece
 				| "a[" Exp "]"		 	 										[strict]
@@ -115,7 +117,7 @@ module TEST
                 </T>
 
     rule S1:Stmts S2:Stmts => S1 ~> S2  [structural]
-    rule <k> a[I] => P ... </k>
+    rule <k> a[I:Exp] => P ... </k>
         <board> ... I |-> P:Piece ... </board>
 
     rule <k> (returnTrue => true ) ... </k>
@@ -144,30 +146,33 @@ module TEST
         64 |-> White R
         </board>
 
-
-
+    rule <k> read => CMD ...</k>
+        <input> ListItem(CMD:Command) => .List ...</input>
+    rule <k> read => PT:PieceType ...</k>
+        <input> ListItem(PT:PieceType) => .List </input>    
+    //Print the board
     rule <k> SHOW => SHOWAUX 0 ... </k>
     // Once we've printed all 64 squares, we stop.
     rule <k> SHOWAUX I:Int => . ... </k>
     requires I >=Int 64
     // Print each piece and a newline every 8 pieces.
-    rule <k> SHOWAUX I:Int => PRINT a[I] PRINT "|" ( if ((I+1) %Int 8 ==Int 0) { PRINT "\n" } else { . } ) SHOWAUX I+1 ... </k>
+    rule <k> SHOWAUX I:Int => PRINT "|" PRINT a[I] ( if ((I+1) %Int 8 ==Int 0) { PRINT "|" PRINT "\n" } else { . } ) SHOWAUX I+1 ... </k>
 
     syntax Int ::= "abs" "(" Int ")" [function]
     rule abs(I) => I  requires I >=Int 0
     rule abs(I) => 0 -Int I requires I <Int 0
 
     //Move Piece
-    rule <k> MOVE I1:Int I2:Int I3:Int I4:Int => handleResult I1 I2 I3 I4 ~> SHOW ~> changeColor C ...</k>
+    rule <k> MOVE I1:Int I2:Int I3:Int I4:Int => handleResult I1 I2 I3 I4 ~> SHOW ~> changeColor C ~> read...</k>
         <turn> C:Color </turn>
         requires validMove I1 I2 I3 I4
     rule <k> MOVE I1:Int I2:Int I3:Int I4:Int => error </k>      [owise]
 
     //Switch turn
     rule <k> changeColor Black => . </k>
-         <turn> White </turn>
+         <turn> _ => White </turn>
     rule <k> changeColor White => . </k>
-         <turn> Black </turn>
+         <turn> _ => Black </turn>
     
     //Check if the move is valid
     rule <k> validMove I1:Int I2:Int I3:Int I4:Int => 
@@ -220,10 +225,12 @@ module TEST
          <board> ...L1 |-> (Pi:Piece => Empty) ... L2 |-> (_ => Pi)...</board>
     rule <k> pawnCheck L:Exp I1:Int I2:Int I3:Int I4:Int => if(PT ==K P){if((C ==K Black && I3 == 8) || (C ==K White && I3==1)){askPromote I3 I4}}
          <board> ...L |-> C:Color PT:PieceType ... </board>
-    rule <k> askPromote I3:Int I4:Int => PRINT "Please enter the pieceType you want to promote to : Q, N, B, R" ~> Promote I3 I4
-    rule <k> Promote I3:Int I4:Int 
-         <input> 
+    rule <k> askPromote I3:Int I4:Int => PRINT "Please enter the pieceType you want to promote to : Q, N, B, R" ~> Promote read a[(I3-1)*8+I4]
+    rule <k> Promote PT:PieceType L:Exp => . </k>
+        <board> ... L |-> (_ => C PT) </board>
+        <turn> C:Color </turn>
+
     
-    
+    rule <k> isCheck I1:Int I2:Int =>
     
 endmodule
