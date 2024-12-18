@@ -1,10 +1,10 @@
-module TEST-SYNTAX
+module TEST1-SYNTAX
     imports DOMAINS-SYNTAX
 
 endmodule
 
-module TEST
-    imports TEST-SYNTAX
+module TEST1
+    imports TEST1-SYNTAX
     imports DOMAINS
     syntax PieceType ::= "P" | "N" | "B" | "R" | "Q" | "K"
     syntax Color ::= "White" 
@@ -31,13 +31,17 @@ module TEST
 				| "PRINT" Exp		                                            [strict]
                 | "Init" 
                 | "SHOW" 
+                | "askPromote" Exp Exp                                          [strict]
                 | "Promote" PieceType Exp                                       [strict]
+                | "enableEnP" Int 
+                | "enPassant" Exp                                               [strict]
     syntax Command ::= | "MOVE" Int Int Int Int 							    [strict]
 
     syntax Exp ::= Int | Bool | String | Id | Piece
 				| "a[" Exp "]"		 	 										[strict]
 				| "Compare" Exp Exp												[strict]
 				| "(" Exp ")"                                                   [bracket]
+                | "abs" "(" Exp ")"                                             [strict]
                > "-" Exp                 										[strict]
                > left:
 			     Exp "*" Exp             										[strict, left]
@@ -109,9 +113,8 @@ module TEST
     configuration <T>
                 <k> Init </k>
                 <board> .Map </baord>
-                <turn> "White" </turn>
-                <turncnt> 0 </turncnt>
-                <EnP> false </EnP>
+                <turn> .Color </turn>
+                <EnP> .Int </EnP>
                 <input color="magenta" stream="stdin"> .List </input>
                 <output color="brown" stream="stdout"> .List </output>
                 </T>
@@ -145,11 +148,14 @@ module TEST
         63 |-> White N
         64 |-> White R
         </board>
+        <turn> .Color => White </turn>
+        <turn> .Int => 0 </turn>
 
     rule <k> read => CMD ...</k>
         <input> ListItem(CMD:Command) => .List ...</input>
     rule <k> read => PT:PieceType ...</k>
         <input> ListItem(PT:PieceType) => .List </input>    
+
     //Print the board
     rule <k> SHOW => SHOWAUX 0 ... </k>
     // Once we've printed all 64 squares, we stop.
@@ -158,13 +164,14 @@ module TEST
     // Print each piece and a newline every 8 pieces.
     rule <k> SHOWAUX I:Int => PRINT "|" PRINT a[I] ( if ((I+1) %Int 8 ==Int 0) { PRINT "|" PRINT "\n" } else { . } ) SHOWAUX I+1 ... </k>
 
-    syntax Int ::= "abs" "(" Int ")" [function]
+    // Absolute 
     rule abs(I) => I  requires I >=Int 0
     rule abs(I) => 0 -Int I requires I <Int 0
 
     //Move Piece
-    rule <k> MOVE I1:Int I2:Int I3:Int I4:Int => handleResult I1 I2 I3 I4 ~> SHOW ~> changeColor C ~> read...</k>
+    rule <k> MOVE I1:Int I2:Int I3:Int I4:Int => handleResult I1 I2 I3 I4  SHOW  changeColor C  read...</k>
         <turn> C:Color </turn>
+        <Enp> _ => 0 </Enp>
         requires validMove I1 I2 I3 I4
     rule <k> MOVE I1:Int I2:Int I3:Int I4:Int => error </k>      [owise]
 
@@ -204,12 +211,14 @@ module TEST
     rule <k> pieceCaptureValid _ Q I1:Int I2:Int I3:Int I4:Int => pieceMoveValid _ Q I1 I2 I3 I4
     //White Pawn
     rule <k> pieceMoveValid Black P I1:Int I2:Int I3:Int I4:Int =>
-        if((I3 == I1 + 1 && I4 == I2) || (I3 == I1+2 && I4 == I2 && I1 == 2))) { returnTrue } else { returnFalse }
+        if((I3 == I1 - 1 && I4 == I2) || (I3 == I1-2 && I4 == I2 && I1 == 2) || (I3==I1+1 && abs(I4-I2) == 1 && I1==5 && Enp == I4)) { returnTrue } else { returnFalse }
+        <EnP> Enp </Enp>
     rule <k> pieceCaptureValid Black P I1:Int I2:Int I3:Int I4:Int => 
         if(I3==I1+1 && abs (I4-I2) == 1) {returnTrue} else{returnFalse}
     //Black Pawn
     rule <k> pieceMoveValid White P I1:Int I2:Int I3:Int I4:Int =>
-        if ((I3 == I1 + 1 && I4 == I2) || (I3 == I1 + 2 && I4 == I2 && I1 == 2)) {returnTrue} else {returnFalse}
+        if ((I3 == I1 + 1 && I4 == I2) || (I3 == I1 + 2 && I4 == I2 && I1 == 2) || (I3==I1+1 && abs(I4-I2) == 1 && I1==4 && Enp == I4)) {returnTrue} else {returnFalse}
+        <EnP> Enp </Enp>
     rule <k> pieceCaptureValid White P I1:Int I2:Int I3:Int I4:Int => 
         if(I3==I1-1 && abs (I4-I2) == 1) {returnTrue} else{returnFalse}
     //Knight 
@@ -220,15 +229,23 @@ module TEST
     rule <k> isPathClear I1:Int I2:Int I3:Int I4:Int => if(I1==I3 && I2==I4){returnTrue} else{if(a[(I1-1)*8+I2] ==K Empty){if(I2==I4){isPathClear I1+((I3-I1)/abs(I1-I3)) I2 I3 I4 }else{if(I1==I3){isPathClear I1 I2+((I4-I2)/abs(I2-I4)) I3 I4}else{isPathClear I1+((I3-I1)/abs(I1-I3)) I2+((I4-I2)/abs(I2-I4)) I3 I4}}}else{returnFalse}}
 
     //Handle the result
-    rule <k> handleResult I1:Int I2:Int I3:Int I4:Int => updateCell (I1-1)*8+I2 (I3-1)*8+I4 ~> pawnCheck a[(I1-1)*8+I2] I1 I2 I3 I4
+    rule <k> handleResult I1:Int I2:Int I3:Int I4:Int => if(PT ==K P && I2 != I4 && a[(I3-1)*8+I4] ==K Empty){enPassant (I1-1)*8+I4} ~> updateCell (I1-1)*8+I2 (I3-1)*8+I4 ~> pawnCheck a[(I1-1)*8+I2] I1 I2 I3 I4
     rule <k> updateCell L1:Exp L2:Exp => . </k>
          <board> ...L1 |-> (Pi:Piece => Empty) ... L2 |-> (_ => Pi)...</board>
-    rule <k> pawnCheck L:Exp I1:Int I2:Int I3:Int I4:Int => if(PT ==K P){if((C ==K Black && I3 == 8) || (C ==K White && I3==1)){askPromote I3 I4}}
+    //We want to check Pawn for Promotion and En Passant
+    rule <k> pawnCheck L:Exp I1:Int I2:Int I3:Int I4:Int => if(PT ==K P){if((C ==K Black && I3 == 8) || (C ==K White && I3==1)){askPromote I3 I4}else{if(abs (I3-I1) == 2){enableEnP I4}}}
          <board> ...L |-> C:Color PT:PieceType ... </board>
+    //Promote
     rule <k> askPromote I3:Int I4:Int => PRINT "Please enter the pieceType you want to promote to : Q, N, B, R" ~> Promote read a[(I3-1)*8+I4]
     rule <k> Promote PT:PieceType L:Exp => . </k>
         <board> ... L |-> (_ => C PT) </board>
         <turn> C:Color </turn>
+    //Enable En Passant
+    rule <k> enableEnP I4:Int=> . </k>
+        <EnP> _ => I4 </EnP>
+    //Execute En Passant
+    rule <k> enPassant L:Exp => . </k>
+        <board> ... L |-> (_ => Empty) </board>
 
     
     rule <k> isCheck I1:Int I2:Int =>
