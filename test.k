@@ -1,9 +1,9 @@
-module TEST1-SYNTAX
+module TEST-SYNTAX
     imports DOMAINS-SYNTAX
 
 endmodule
 
-module TEST1
+module TEST
     imports TEST1-SYNTAX
     imports DOMAINS
     syntax PieceType ::= "P" | "N" | "B" | "R" | "Q" | "K"
@@ -21,14 +21,14 @@ module TEST1
                 | "pieceMoveValid" Piece Int Int Int Int                        [strict]
                 | "pieceCaptureValid" Piece Int Int Int Int                     [strict]
                 | "isPathClear" Exp Exp Exp Exp                                 [strict]
-                | "handleResult" Exp Exp Exp Exp                                [strict]
+                | "handleResult" Exp Exp Exp Exp Exp                            [strict]
                 | "updateCell" Exp Exp                                          [strict]
-                | "pawnCheck" Exp Int Int Int Int                               [strict]
+                | "afterCheck" Exp Int Int Int Int                               [strict]
                 | "changeColor" Color                                           [strict]
                 | "SHOW"                      
                 | "read"                                                        [strict]                          
                 | "SHOWAUX" Int                                                 [strict]
-		| "PRINT" Exp		                                            [strict]
+				| "PRINT" Exp		                                            [strict]
                 | "Init" 
                 | "SHOW" 
                 | "askPromote" Exp Exp                                          [strict]
@@ -36,10 +36,14 @@ module TEST1
                 | "enableEnP" Int 
                 | "enPassant" Exp                                               [strict]
                 | "isCheck"
-                | "horzCheck" Exp                                               [strict]
-                | "vertCheck" Exp                                               [strict]
-                | "diag1Check" Exp                                              [strict]
-                | "diag2Check" Exp                                              [strict]
+                | "upCheck" Exp                                                 [strict]
+                | "downCheck" Exp                                                [strict]
+                | "leftCheck" Exp                                                [strict]
+                | "rightCheck" Exp                                                [strict]
+                | "diag11Check" Exp                                              [strict]
+                | "diag12Check" Exp                                              [strict]
+                | "diag21Check" Exp                                              [strict]
+                | "diag22Check" Exp                                              [strict]
                 | "pCheck" Exp                                                  [strict]
                 | "pCheckPos" Exp                                               [strict]
                 | "knightCheck" Exp                                             [strict]
@@ -127,6 +131,7 @@ module TEST1
                 <input color="magenta" stream="stdin"> .List </input>
                 <output color="brown" stream="stdout"> .List </output>
                 <kingLoc> .Map </kingLoc>
+                <checkPiece> .Int </checkPiece>
                 </T>
 
     rule S1:Stmts S2:Stmts => S1 ~> S2  [structural]
@@ -182,7 +187,7 @@ module TEST1
     rule abs(I) => 0 -Int I requires I <Int 0
 
     //Move Piece
-    rule <k> MOVE I1:Int I2:Int I3:Int I4:Int => handleResult I1 I2 I3 I4  SHOW  changeColor C  read...</k>
+    rule <k> MOVE I1:Int I2:Int I3:Int I4:Int => handleResult (I1-1)*8+I2 I1 I2 I3 I4  SHOW  changeColor C  read...</k>
         <turn> C:Color </turn>
         <Enp> _ => 0 </Enp>
         requires validMove I1 I2 I3 I4
@@ -250,14 +255,18 @@ module TEST1
     rule <k> isPathClear I1:Int I2:Int I3:Int I4:Int => if(I1==I3 && I2==I4){returnTrue} else{if(a[(I1-1)*8+I2] ==K Empty){if(I2==I4){isPathClear I1+((I3-I1)/abs(I1-I3)) I2 I3 I4 }else{if(I1==I3){isPathClear I1 I2+((I4-I2)/abs(I2-I4)) I3 I4}else{isPathClear I1+((I3-I1)/abs(I1-I3)) I2+((I4-I2)/abs(I2-I4)) I3 I4}}}else{returnFalse}} </k>
 
     //Handle the result
-    rule <k> handleResult I1:Int I2:Int I3:Int I4:Int => if(PT ==K P && I2 != I4 && a[(I3-1)*8+I4] ==K Empty){enPassant (I1-1)*8+I4} ~> updateCell (I1-1)*8+I2 (I3-1)*8+I4 ~> pawnCheck a[(I1-1)*8+I2] I1 I2 I3 I4 </k>
-
+    rule <k> handleResult L:Exp I1:Int I2:Int I3:Int I4:Int => if(PT ==K P && I2 != I4 && a[(I3-1)*8+I4] ==K Empty){enPassant (I1-1)*8+I4} if(PT)~> updateCell (I1-1)*8+I2 (I3-1)*8+I4 ~> afterCheck a[(I1-1)*8+I2] I1 I2 I3 I4 </k>
+         <board> ...L |-> _ PT:PieceType ... </board>
     rule <k> updateCell L1:Exp L2:Exp => . </k>
          <board> ...L1 |-> (Pi:Piece => Empty) ... L2 |-> (_ => Pi)...</board>
 
     //We want to check Pawn for Promotion and initial move
-    rule <k> pawnCheck L:Exp I1:Int I2:Int I3:Int I4:Int => if(PT ==K P){if((C ==K Black && I3 == 8) || (C ==K White && I3==1)){askPromote I3 I4}else{if(abs (I3-I1) == 2){enableEnP I4}}} </k>
+    rule <k> afterCheck L:Exp I1:Int I2:Int I3:Int I4:Int => if(PT ==K P){if((C ==K Black && I3 == 8) || (C ==K White && I3==1)){askPromote I3 I4}else{if(abs (I3-I1) == 2){enableEnP I4}}} if(PT==K){updateKpos (I3-1)*8+I4}</k>
          <board> ...L |-> C:Color PT:PieceType ... </board>
+    
+    rule <k> updateKpos I:Exp => . </k>
+        <kingLoc> C |-> I </kingLoc>
+        <turn> C </turn>
 
     //Promote
     rule <k> askPromote I3:Int I4:Int => PRINT "Please enter the pieceType you want to promote to : Q, N, B, R" ~> Promote read a[(I3-1)*8+I4] </k>
@@ -275,35 +284,88 @@ module TEST1
         <board> ... L |-> (_ => Empty) </board>
 
     //Check if the King is in check
-    rule <k> isCheck => horzCheck (I-1)/8*8+1 || vertCheck (I-1)%8+1 || diag1Check I-((I-1)%8)*9 || diag2Check I -(7-(I-1)%8)*7 || pCheck I || knightCheck I </k>
+    rule <k> isCheck => rightCheck I || leftCheck I || downCheck I || upCheck I || diag11Check I || diag12Check I || diag21Check I || diag22Check I || knightCheck I || pCheck I ~> restoreBoard</k>
         <turn> C:Color </turn>
         <kingLoc> C |-> I:Int </kingLoc>
 
-    rule <k> horzCheck I => if(C =/=K C1 && (PT == Q || PT == R)){returnTrue}else{if(I%8 != 0){horzCheck I+1}else{returnFalse}} </k>
+    rule <k> rightCheck I => if(C =/=K C1 && (PT == Q || PT == R)){recordPiece I returnTrue}else{if(C ==K C1 && PT =/=K K){returnFalse}else{if(I%8 != 0){rightCheck I+1}else{returnFalse}}} </k>
         <Board> ... I |-> C:Color PT:PieceType </Board>
         <turn> C1:Color </turn>
-    rule <k> vertCheck I => if(C =/=K C1 && (PT == Q || PT == R)){returnTrue}else{if((I-1)/8 != 7){vertCheck I+8}else{returnFalse}} </k>
+
+    rule <k> leftCheck I => if(C =/=K C1 && (PT == Q || PT == R)){recordPiece I returnTrue}else{if(C ==K C1 && PT =/=K K){returnFalse}else{if(I%8 != 1){rightCheck I-1}else{returnFalse}}} </k>
+        <Board> ... I |-> C:Color PT:PieceType </Board>
+        <turn> C1:Color </turn>        
+
+    rule <k> downCheck I => if(C =/=K C1 && (PT == Q || PT == R)){recordPiece I returnTrue}else{if(C ==K C1 && PT =/=K K){returnFalse}else{if((I-1)/8 != 7){downCheck I+8}else{returnFalse}}} </k>
         <Board> ... I |-> C:Color PT:PieceType </Board>
         <turn> C1:Color </turn>
-    rule <k> diag1Check I => if(C =/=K C1 && (PT == Q || PT == B)){returnTrue}else{if((I-1)/8 != 7 && I%8 != 0){diag1Check I+9}else{returnFalse}} </k>
+
+    rule <k> upCheck I => if(C =/=K C1 && (PT == Q || PT == R)){recordPiece I returnTrue}else{if(C ==K C1 && PT =/=K K){returnFalse}else{if((I-1)/8 != 0){upCheck I-8}else{returnFalse}}} </k>
         <Board> ... I |-> C:Color PT:PieceType </Board>
         <turn> C1:Color </turn>
-    rule <k> diag2Check I => if(C =/=K C1 && (PT == Q || PT == B)){returnTrue}else{if((I-1)/8 != 7 && I%8 != 1){diag1Check I+7}else{returnFalse}} </k>
+
+    rule <k> diag11Check I => if(C =/=K C1 && (PT == Q || PT == B)){recordPiece I returnTrue}else{if(C ==K C1 && PT =/=K K){returnFalse}else{if((I-1)/8 != 7 && I%8 != 0){diag11Check I+9}else{returnFalse}}} </k>
         <Board> ... I |-> C:Color PT:PieceType </Board>
         <turn> C1:Color </turn>
+    
+    rule <k> diag12Check I => if(C =/=K C1 && (PT == Q || PT == B)){recordPiece I returnTrue}else{if(C ==K C1 && PT =/=K K){returnFalse}else{if((I-1)/8 != 0 && I%8 != 1){diag12Check I-9}else{returnFalse}}} </k>
+        <Board> ... I |-> C:Color PT:PieceType </Board>
+        <turn> C1:Color </turn>
+
+    rule <k> diag21Check I => if(C =/=K C1 && (PT == Q || PT == B)){recordPiece I returnTrue}else{if(C ==K C1 && PT =/=K K){returnFalse}else{if((I-1)/8 != 7 && I%8 != 1){diag21Check I+7}else{returnFalse}}} </k>
+        <Board> ... I |-> C:Color PT:PieceType </Board>
+        <turn> C1:Color </turn>
+
+    rule <k> diag22Check I => if(C =/=K C1 && (PT == Q || PT == B)){recordPiece I returnTrue}else{if(C ==K C1 && PT =/=K K){returnFalse}else{if((I-1)/8 != 0 && I%8 != 8){diag22Check I-7}else{returnFalse}}} </k>
+        <Board> ... I |-> C:Color PT:PieceType </Board>
+        <turn> C1:Color </turn>
+
     rule <k> knightCheck I => 
        knightCheckPos(I+17) || knightCheckPos(I-17)
        || knightCheckPos(I+15) || knightCheckPos(I-15)
        || knightCheckPos(I+10) || knightCheckPos(I-10)
        || knightCheckPos(I+6)  || knightCheckPos(I-6)
        ...</k>
+
     rule <k> pCheck I => if(C ==K Black){pCheckPos(I+9)||pCheckPos(I+7)}else{pCheckPos(I-7)||pCheckPos(I-9)} </k>
         <turn> C:Color </turn>
-    rule <k> pCheckPos I => if(C =/=K C1 && PT == P){returnTrue}else{returnFalse} </k>
+
+    rule <k> pCheckPos I => if(I>64 || I<1){returnFalse} if(C =/=K C1 && PT == P){recordPiece I returnTrue}else{returnFalse} </k>
+        <Board> ... I |-> C:Color PT:PieceType ... </Board>
+        <turn> C1:Color </turn>
+
+    rule <k> knightCheckPos I => if(I>64 || I<1){returnFalse} if(C =/=K C1 && PT == N){recordPiece I returnTrue}else{returnFalse} </k>
         <Board> ... I |-> C:Color PT:PieceType </Board>
         <turn> C1:Color </turn>
-    rule <k> knightCheckPos I => if(C =/=K C1 && PT == N){returnTrue}else{returnFalse} </k>
-        <Board> ... I |-> C:Color PT:PieceType </Board>
-        <turn> C1:Color </turn>
+    
+    rule <k> recordPiece I => . </k>
+        <checkPiece> .Int => I </checkPiece>
+
+    //Check if there is a Checkmate
+    rule <k> isCheckMate => storeBoard ~> if(!isCheck){returnFalse}else{if(moveK||capturePiece||blockPiece){returnFalse}else{returnTrue}} </k>
+    rule <k> storeBoard => . </k>
+        <temp> .Map => BD </temp>
+        <board> BD </board>
+        <kingLoc> KL </kingLoc>
+    rule <k> restoreBoard => . </k>
+        <temp> BD </temp>
+        <board> _ => BD </board>
+
+    //First by checking if moving K can get out of this
+    rule <k> moveK => moveKCheck I+1||moveKCheck I-1||moveKCheck I+8||moveKCheck I-8 || moveKCheck I+9 || moveKCheck I+7 || moveKCheck I-9 || moveKCheck I-7
+        <kingLoc> I </kingLoc>
+    rule <k> moveKCheck I => if(C1 ==K C || I>64 || I<1){returnFalse}else{moveKPos I}
+        <board> I |-> C:Color PT:PieceType </board>
+        <turn> C1 </turn>
+    rule <k> moveKPos I => if(isCheck){returnFalse}else{returnTrue} </k>
+        <board> ... I |-> (_ => C K)... I1 |-> (_ => Empty) ...
+        <kingLoc> C |-> (I1:Int => I) </kingLoc>
+        <turn> C </turn>
+
+    //Second by checking if the piece checking the King can be captured
+    rule <k> capturePiece => rightCheck I || leftCheck I || downCheck I || upCheck I || diag11Check I || diag12Check I || diag21Check I || diag22Check I || knightCheck I || pCheck I
+        <checkPiece> I </checkPiece>
+    
+    //Third by checking if we can block the path between the king and the checking piece
     
 endmodule
