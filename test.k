@@ -28,7 +28,7 @@ module TEST1
                 | "SHOW"                      
                 | "read"                                                        [strict]                          
                 | "SHOWAUX" Int                                                 [strict]
-				| "PRINT" Exp		                                            [strict]
+		| "PRINT" Exp		                                            [strict]
                 | "Init" 
                 | "SHOW" 
                 | "askPromote" Exp Exp                                          [strict]
