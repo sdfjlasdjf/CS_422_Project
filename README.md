@@ -8,7 +8,6 @@ This project builds the chess game using the K framework. The language includes 
 Although the code is not a complete or perfectly accurate chess engine, it demonstrates how to model a stateful, rule-based system (chess moves) in K, and how to reason about it using rewrite rules and configurations.
 
 
-
 Key Concepts
 
 K Framework:
@@ -33,19 +32,19 @@ Configuration:
 
 The configuration, defined by the <configuration> cell, specifies the initial program state:
 
-<k> cell holds the computation (or the "program counter").
+k cell holds the computation (or the "program counter").
 
-<board> cell holds the mapping of board cells to pieces.
+board cell holds the mapping of board cells to pieces.
 
-<turn> cell holds the current player’s turn (White or Black).
+turn cell holds the current player’s turn (White or Black).
 
-<EnP> cell holds information about en passant possibilities.
+EnP cell holds information about en passant possibilities.
 
-<input> and <output> cells provide a way to handle input commands and display the board.
+input and output cells provide a way to handle input commands and display the board.
 
-<kingLoc> tracks the positions of the kings.
+kingLoc tracks the positions of the kings.
 
-<checkPiece> tracks pieces putting a king in check.
+checkPiece tracks pieces putting a king in check.
 
 
 Chess Rules Implemented:
