@@ -1,21 +1,20 @@
-README
+# README
 
-
-Overview
+## Overview
 
 This project builds the chess game using the K framework. The language includes constructs for representing a chessboard, pieces, moves, and various chess rules, such as piece movement, capturing, and turn-based play. It also provides functionality for checking conditions like move validity, path clearance, and special moves like en passant and promotion.
 
 Although the code is not a complete or perfectly accurate chess engine, it demonstrates how to model a stateful, rule-based system (chess moves) in K, and how to reason about it using rewrite rules and configurations.
 
 
-Key Concepts
+## Key Concepts
 
-K Framework:
+### K Framework:
 
 The entire project is written in K, a rewrite-based executable semantics framework. K lets you define languages by specifying their syntax and semantics, then automatically generates parsers, interpreters, and analysis tools.
 
 
-Syntax & Semantics:
+### Syntax & Semantics:
 
 The project uses custom syntax for representing:
 
@@ -28,7 +27,7 @@ Moves, input/output commands, and other game-related operations.
 It then provides rewrite rules that define the semantics of these constructs. For example, a rule describes how a move command updates the board, how en passant is handled, or how turn switching happens after a move.
 
 
-Configuration:
+### Configuration:
 
 The configuration, defined by the <configuration> cell, specifies the initial program state:
 
@@ -47,14 +46,14 @@ kingLoc tracks the positions of the kings.
 checkPiece tracks pieces putting a king in check.
 
 
-Chess Rules Implemented:
+### Chess Rules Implemented:
 
 Initialization: The Init command sets up the board in a standard chess configuration.
 
 Piece Movements: The language defines validMove and pieceMoveValid/pieceCaptureValid functions for each type of piece (Pawn, Knight, Bishop, Rook, Queen, King).
 
 
-Special Rules:
+#### Special Rules:
 
 En Passant: Detected and handled by enabling and using the <EnP> cell.
 
@@ -75,7 +74,7 @@ Board Representation: The board is represented as a mapping (<board> .Map </boar
 
 
 
-Directory Structure and Files
+## Directory Structure and Files
 
 
 TEST-SYNTAX and TEST modules: These contain the syntax and semantics of the chess-like language.
@@ -86,16 +85,16 @@ All the rule blocks define the semantic behavior of different constructs.
 
 
 
-How to Run
+## How to Run
 
 
-Prerequisites:
+### Prerequisites:
 
 Install the K framework.
 
 For installation instructions, see https://github.com/kframework/k.
 
-Executing the Semantics:
+### Executing the Semantics:
 
 Once you have K installed, you can parse and run a specific program using krun. For example, to run Init and display the initial board configuration, create a file (e.g., program.in) containing Init and run:
 
@@ -103,7 +102,7 @@ krun program.in
 
 This will execute the rules defined in the TEST module and produce the final configuration.
 
-Providing Input:
+### Providing Input:
 
 The <input> cell reads commands from a list of items. To simulate moves, you can type in:
 
@@ -115,23 +114,23 @@ When encountering a promotion, when prompted, just type in Q or B or R or N to p
 
 
 
-Troubleshooting & Further Development
+## Troubleshooting & Further Development
 
 
-Extending Rules:
+### Extending Rules:
 
 To implement more chess rules (like castling, stalemate detection, or fifty-move rule), add corresponding rules in this style.
 
-Debugging:
+### Debugging:
 
 Use kompile to compile the definition:
 
 kompile TEST.k
 
-Limitations: This is not a full chess engine. It doesn't handle all rules (like draws, correct checkmate detection in all scenarios, etc.). It's mainly for demonstration purposes.
+### Limitations: This is not a full chess engine. It doesn't handle all rules (like draws, correct checkmate detection in all scenarios, etc.). It's mainly for demonstration purposes.
 
 
 
-Conclusion
+## Conclusion
 
 This project showcases a K-based definition of chess rules. It uses a rich configuration structure, pattern matching, and rewrite rules to simulate a game step-by-step. While not complete, it provides a solid foundation for further exploration and a stepping stone for those interested in using K to model and analyze complex systems.
